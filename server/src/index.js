@@ -20,14 +20,17 @@ console.log('Environment variables loaded:', {
   PORT,
   MONGO_URI: process.env.MONGO_URI ? 'MongoDB URI is set' : 'MongoDB URI is not set',
   JWT_SECRET: process.env.JWT_SECRET_KEY ? 'JWT Secret is set' : 'JWT Secret is not set',
-  STEAM_API_KEY: process.env.STEAM_API_KEY ? 'Stream API Key is set' : 'Stream API Key is not set'
+  STREAM_API_KEY: process.env.STREAM_API_KEY ? 'Stream API Key is set' : 'Stream API Key is not set'
 });
 
 // Initialize Stream Chat
-export const streamClient = StreamChat.getInstance(
-  process.env.STEAM_API_KEY,
-  process.env.STEAM_API_SECRET
+const streamClient = StreamChat.getInstance(
+  process.env.STREAM_API_KEY,
+  process.env.STREAM_API_SECRET
 );
+
+// Export streamClient for use in other files
+export { streamClient };
 
 // Middleware
 app.use(cors());
@@ -60,4 +63,4 @@ mongoose
   })
   .catch((error) => {
     console.error('MongoDB connection error:', error);
-  }); 
+  });

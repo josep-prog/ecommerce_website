@@ -1,46 +1,50 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { streamClient } from '../index.js';
 
-// Register a new user
+// Helper function to transform user data
+const transformUser = (user) => {
+  const userObj = user.toObject();
+  return {
+    id: userObj._id,
+    name: userObj.name,
+    email: userObj.email,
+    role: userObj.role,
+    avatar: userObj.avatar
+  };
+};
+
+// Register user
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    let user = await User.findOne({ email });
+    if (user) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     // Create new user
-    const user = new User({
+    user = new User({
       name,
       email,
-      password: hashedPassword,
+      password: await bcrypt.hash(password, 10)
     });
 
     await user.save();
 
-    // Create JWT token
+    // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id },
+      { id: user._id },
       process.env.JWT_SECRET_KEY,
       { expiresIn: '7d' }
     );
 
     res.status(201).json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: transformUser(user)
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -65,21 +69,16 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Create JWT token
+    // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id },
+      { id: user._id },
       process.env.JWT_SECRET_KEY,
       { expiresIn: '7d' }
     );
 
     res.json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: transformUser(user)
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -90,13 +89,30 @@ export const login = async (req, res) => {
 // Get current user
 export const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('-password');
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json({ user });
+
+    res.json({ user: transformUser(user) });
   } catch (error) {
     console.error('Get current user error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Generate Stream Chat token
+export const generateChatToken = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const token = streamClient.createToken(user._id.toString());
+    res.json({ token });
+  } catch (error) {
+    console.error('Error generating chat token:', error);
+    res.status(500).json({ message: 'Error generating chat token' });
   }
 }; 

@@ -29,6 +29,32 @@ const streamClient = StreamChat.getInstance(
   process.env.STREAM_API_SECRET
 );
 
+// Configure default channel permissions
+streamClient.updateAppSettings({
+  permissions: {
+    'messaging': {
+      'read-channel': ['*'],
+      'write-channel': ['*'],
+      'join-channel': ['*'],
+      'create-channel': ['admin'],
+      'delete-channel': ['admin'],
+      'update-channel': ['admin']
+    }
+  },
+  channel_types: {
+    messaging: {
+      permissions: {
+        'read-channel': ['*'],
+        'write-channel': ['*'],
+        'join-channel': ['*'],
+        'create-channel': ['admin'],
+        'delete-channel': ['admin'],
+        'update-channel': ['admin']
+      }
+    }
+  }
+}).catch(console.error);
+
 // Export streamClient for use in other files
 export { streamClient };
 

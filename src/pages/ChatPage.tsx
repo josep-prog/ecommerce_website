@@ -15,13 +15,21 @@ import { motion } from 'framer-motion';
 import { MessageCircle, Users, Video, Phone, Paperclip, Smile } from 'lucide-react';
 import 'stream-chat-react/dist/css/v2/index.css';
 import axios from 'axios';
+import { Navigate } from 'react-router-dom';
 
 const ChatPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
   const [channel, setChannel] = useState<StreamChannel | null>(null);
+  const [channels, setChannels] = useState<StreamChannel[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(true);
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+
+  // Redirect if not authenticated
+  if (!loading && !user) {
+    return <Navigate to="/login" replace />;
+  }
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -54,39 +62,28 @@ const ChatPage: React.FC = () => {
         // Initialize Stream Chat client
         const client = StreamChat.getInstance(import.meta.env.VITE_STREAM_API_KEY);
         
-        // Connect user to Stream Chat with retry logic
-        let retryCount = 0;
-        const maxRetries = 3;
-        
-        while (retryCount < maxRetries) {
-          try {
-            await client.connectUser(
-              {
-                id: user.id,
-                name: user.name,
-                image: user.avatar || undefined,
-              },
-              token
-            );
-            break;
-          } catch (err) {
-            retryCount++;
-            if (retryCount === maxRetries) {
-              throw new Error('Failed to connect to chat after multiple attempts');
-            }
-            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-          }
+        // Check if the client is already connected
+        if (client.userID) {
+          console.log('Stream Chat client already connected, reusing existing connection.');
+          setChatClient(client);
+          await loadChannels(client);
+          setIsConnecting(false);
+          return;
         }
+        
+        // Connect user to Stream Chat
+        await client.connectUser(
+          {
+            id: user.id,
+            name: user.name,
+            image: user.avatar || undefined,
+            role: user.role || 'user'
+          },
+          token
+        );
 
-        // Create or get support channel
-        const channel = client.channel('messaging', 'support', {
-          name: 'Customer Support',
-          members: [user.id],
-        });
-
-        await channel.watch();
         setChatClient(client);
-        setChannel(channel);
+        await loadChannels(client);
       } catch (err) {
         console.error('Error initializing chat:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize chat');
@@ -95,14 +92,74 @@ const ChatPage: React.FC = () => {
       }
     };
 
-    initializeChat();
+    const loadChannels = async (client: StreamChat) => {
+      try {
+        if (user?.role === 'admin') {
+          // For admin: Get all support channels
+          const filter = { type: 'messaging' };
+          const sort = { last_message_at: -1 };
+          const channels = await client.queryChannels(filter, sort);
+          setChannels(channels);
+          
+          if (channels.length > 0 && !selectedChannel) {
+            setSelectedChannel(channels[0].id);
+            setChannel(channels[0]);
+          }
+        } else {
+          // For regular users: Get or create their support channel
+          const channel = client.channel('messaging', `support-${user.id}`, {
+            name: 'Customer Support',
+            members: [user.id],
+            created_by_id: user.id,
+            configs: {
+              typing_events: true,
+              read_events: true,
+              connect_events: true,
+              reactions: true,
+              replies: true,
+              search: true,
+              typing_indicators: {
+                enabled: true
+              }
+            }
+          });
+
+          await channel.watch();
+          setChannel(channel);
+          setChannels([channel]);
+        }
+      } catch (err) {
+        console.error('Error loading channels:', err);
+        throw err;
+      }
+    };
+
+    if (user) {
+      initializeChat();
+    }
 
     return () => {
       if (chatClient) {
         chatClient.disconnectUser().catch(console.error);
       }
     };
-  }, [user]);
+  }, [user, selectedChannel]);
+
+  const handleChannelSelect = (channel: StreamChannel) => {
+    setSelectedChannel(channel.id);
+    setChannel(channel);
+  };
+
+  if (loading || isConnecting) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Connecting to chat...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -121,28 +178,62 @@ const ChatPage: React.FC = () => {
     );
   }
 
-  if (isConnecting || !chatClient || !channel) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Connecting to chat...</p>
-        </div>
-      </div>
-    );
+  if (!chatClient) {
+    return null;
   }
 
   return (
     <div className="h-[calc(100vh-4rem)]">
       <Chat client={chatClient} theme="messaging light">
-        <Channel channel={channel}>
-          <Window>
-            <ChannelHeader />
-            <MessageList />
-            <MessageInput />
-          </Window>
-          <Thread />
-        </Channel>
+        {user?.role === 'admin' ? (
+          <div className="flex h-full">
+            <div className="w-1/4 border-r border-gray-200">
+              <ChannelList
+                filters={{ type: 'messaging' }}
+                sort={{ last_message_at: -1 }}
+                options={{ state: true, presence: true, limit: 10 }}
+                Preview={({ channel }) => (
+                  <div
+                    className={`p-4 cursor-pointer hover:bg-gray-100 ${
+                      selectedChannel === channel.id ? 'bg-gray-100' : ''
+                    }`}
+                    onClick={() => handleChannelSelect(channel)}
+                  >
+                    <h3 className="font-semibold">{channel.data?.name || 'Support Chat'}</h3>
+                    <p className="text-sm text-gray-500">
+                      {channel.state.messages[channel.state.messages.length - 1]?.text || 'No messages yet'}
+                    </p>
+                  </div>
+                )}
+              />
+            </div>
+            <div className="flex-1">
+              {channel ? (
+                <Channel channel={channel}>
+                  <Window>
+                    <ChannelHeader />
+                    <MessageList />
+                    <MessageInput />
+                  </Window>
+                  <Thread />
+                </Channel>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-gray-500">Select a chat to start messaging</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <Channel channel={channel!}>
+            <Window>
+              <ChannelHeader />
+              <MessageList />
+              <MessageInput />
+            </Window>
+            <Thread />
+          </Channel>
+        )}
       </Chat>
     </div>
   );

@@ -109,7 +109,19 @@ export const generateChatToken = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const token = streamClient.createToken(user._id.toString());
+    // Create token with user role and permissions
+    const token = streamClient.createToken(user._id.toString(), {
+      role: user.role || 'user',
+      permissions: {
+        'read-channel': ['*'],
+        'write-channel': ['*'],
+        'join-channel': ['*'],
+        'create-channel': user.role === 'admin' ? ['*'] : [],
+        'delete-channel': user.role === 'admin' ? ['*'] : [],
+        'update-channel': user.role === 'admin' ? ['*'] : []
+      }
+    });
+
     res.json({ token });
   } catch (error) {
     console.error('Error generating chat token:', error);

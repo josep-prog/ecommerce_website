@@ -72,7 +72,7 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto"
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sticky top-24"
     >
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">

@@ -54,7 +54,7 @@ function App() {
             <Router {...router}>
               <div className="flex flex-col min-h-screen">
                 <Navbar />
-                <main className="flex-grow">
+                <main className="flex-grow pt-16">
                   <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/products" element={<ProductsPage />} />

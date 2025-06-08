@@ -18,7 +18,7 @@ const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
 
   if (user) {
-    return <Navigate to="/\" replace />;
+    return <Navigate to="/" replace />;
   }
 
   const validateForm = () => {

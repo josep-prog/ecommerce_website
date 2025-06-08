@@ -118,7 +118,8 @@ export const generateChatToken = async (req, res) => {
         'join-channel': ['*'],
         'create-channel': user.role === 'admin' ? ['*'] : [],
         'delete-channel': user.role === 'admin' ? ['*'] : [],
-        'update-channel': user.role === 'admin' ? ['*'] : []
+        'update-channel': user.role === 'admin' ? ['*'] : [],
+        'query-channels': user.role === 'admin' ? ['*'] : []  // Allow admins to query all channels
       }
     });
 

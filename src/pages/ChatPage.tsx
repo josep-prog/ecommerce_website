@@ -96,9 +96,16 @@ const ChatPage: React.FC = () => {
       try {
         if (user?.role === 'admin') {
           // For admin: Get all support channels
-          const filter = { type: 'messaging' };
+          const filter = { 
+            type: 'messaging',
+            members: { $in: [user.id] }  // Include channels where admin is a member
+          };
           const sort = { last_message_at: -1 };
-          const channels = await client.queryChannels(filter, sort);
+          const channels = await client.queryChannels(filter, sort, {
+            state: true,
+            presence: true,
+            limit: 10
+          });
           setChannels(channels);
           
           if (channels.length > 0 && !selectedChannel) {

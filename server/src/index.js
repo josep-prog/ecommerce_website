@@ -38,7 +38,8 @@ streamClient.updateAppSettings({
       'join-channel': ['*'],
       'create-channel': ['admin'],
       'delete-channel': ['admin'],
-      'update-channel': ['admin']
+      'update-channel': ['admin'],
+      'query-channels': ['admin']
     }
   },
   channel_types: {
@@ -49,8 +50,16 @@ streamClient.updateAppSettings({
         'join-channel': ['*'],
         'create-channel': ['admin'],
         'delete-channel': ['admin'],
-        'update-channel': ['admin']
-      }
+        'update-channel': ['admin'],
+        'query-channels': ['admin']
+      },
+      commands: ['giphy', 'imgur'],
+      max_message_length: 5000,
+      allow_reactions: true,
+      allow_threads: true,
+      allow_typing_events: true,
+      allow_read_events: true,
+      allow_connect_events: true
     }
   }
 }).catch(console.error);

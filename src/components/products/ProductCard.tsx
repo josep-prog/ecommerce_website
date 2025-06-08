@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Star, Heart, ShoppingCart, Eye } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import toast from 'react-hot-toast';
+import { formatCurrency } from '../../utils/currency';
 
 interface Product {
   id: string;
@@ -161,11 +162,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode }) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  ${product.price}
+                  {formatCurrency(product.price)}
                 </span>
                 {product.originalPrice && (
                   <span className="text-lg text-gray-500 line-through">
-                    ${product.originalPrice}
+                    {formatCurrency(product.originalPrice)}
                   </span>
                 )}
               </div>
@@ -288,11 +289,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                ${product.price}
+                {formatCurrency(product.price)}
               </span>
               {product.originalPrice && (
                 <span className="text-sm text-gray-500 line-through">
-                  ${product.originalPrice}
+                  {formatCurrency(product.originalPrice)}
                 </span>
               )}
             </div>

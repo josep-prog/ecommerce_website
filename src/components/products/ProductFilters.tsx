@@ -1,17 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { X, Star } from 'lucide-react';
+import { formatCurrencyWithoutSymbol } from '../../utils/currency';
+
+interface FilterState {
+  category: string;
+  priceRange: number[];
+  sizes: string[];
+  colors: string[];
+  rating: number;
+  inStock: boolean;
+}
 
 interface FilterProps {
-  filters: {
-    category: string;
-    priceRange: number[];
-    sizes: string[];
-    colors: string[];
-    rating: number;
-    inStock: boolean;
-  };
-  setFilters: React.Dispatch<React.SetStateAction<any>>;
+  filters: FilterState;
+  setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
 }
 
 const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
@@ -37,7 +40,7 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
   };
 
   const handleSizeToggle = (size: string) => {
-    setFilters((prev: any) => ({
+    setFilters((prev: FilterState) => ({
       ...prev,
       sizes: prev.sizes.includes(size)
         ? prev.sizes.filter((s: string) => s !== size)
@@ -46,7 +49,7 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
   };
 
   const handleColorToggle = (color: string) => {
-    setFilters((prev: any) => ({
+    setFilters((prev: FilterState) => ({
       ...prev,
       colors: prev.colors.includes(color)
         ? prev.colors.filter((c: string) => c !== color)
@@ -97,7 +100,7 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
                 value={category.value}
                 checked={filters.category === category.value}
                 onChange={(e) =>
-                  setFilters(prev => ({ ...prev, category: e.target.value }))
+                  setFilters((prev: FilterState) => ({ ...prev, category: e.target.value }))
                 }
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
               />
@@ -121,7 +124,7 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
             max="200"
             value={filters.priceRange[1]}
             onChange={(e) =>
-              setFilters(prev => ({
+              setFilters((prev: FilterState) => ({
                 ...prev,
                 priceRange: [0, parseInt(e.target.value)],
               }))
@@ -129,8 +132,8 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
           />
           <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-            <span>$0</span>
-            <span>${filters.priceRange[1]}</span>
+            <span>RWF 0</span>
+            <span>RWF {formatCurrencyWithoutSymbol(filters.priceRange[1])}</span>
           </div>
         </div>
       </div>
@@ -194,7 +197,7 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
                 value={rating}
                 checked={filters.rating === rating}
                 onChange={(e) =>
-                  setFilters(prev => ({ ...prev, rating: parseInt(e.target.value) }))
+                  setFilters((prev: FilterState) => ({ ...prev, rating: parseInt(e.target.value) }))
                 }
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
               />
@@ -223,7 +226,7 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
             type="checkbox"
             checked={filters.inStock}
             onChange={(e) =>
-              setFilters(prev => ({ ...prev, inStock: e.target.checked }))
+              setFilters((prev: FilterState) => ({ ...prev, inStock: e.target.checked }))
             }
             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
           />

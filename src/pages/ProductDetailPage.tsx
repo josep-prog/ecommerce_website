@@ -16,13 +16,15 @@ import {
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import toast from 'react-hot-toast';
+import { formatCurrency } from '../utils/currency';
 
 // Mock product data - replace with API call
 const mockProduct = {
   id: '1',
   name: 'Premium Cotton T-Shirt',
-  price: 29.99,
-  originalPrice: 39.99,
+  price: 29999,
+  originalPrice: 39999,
+  image: 'https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=800',
   images: [
     'https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=800',
     'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=800',
@@ -189,16 +191,16 @@ const ProductDetailPage: React.FC = () => {
               </div>
               <div className="flex items-center space-x-3">
                 <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  ${product.price}
+                  {formatCurrency(product.price)}
                 </span>
                 {product.originalPrice && (
                   <span className="text-xl text-gray-500 line-through">
-                    ${product.originalPrice}
+                    {formatCurrency(product.originalPrice)}
                   </span>
                 )}
                 {product.originalPrice && (
                   <span className="bg-red-100 text-red-800 text-sm px-2 py-1 rounded">
-                    Save ${(product.originalPrice - product.price).toFixed(2)}
+                    Save {formatCurrency(product.originalPrice - product.price)}
                   </span>
                 )}
               </div>

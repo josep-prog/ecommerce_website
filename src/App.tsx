@@ -37,13 +37,21 @@ const queryClient = new QueryClient({
   },
 });
 
+// Router configuration with future flags
+const router = {
+  future: {
+    v7_startTransition: true,
+    v7_relativeSplatPath: true
+  }
+};
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
           <ThemeProvider>
-            <Router>
+            <Router {...router}>
               <div className="flex flex-col min-h-screen">
                 <Navbar />
                 <main className="flex-grow">

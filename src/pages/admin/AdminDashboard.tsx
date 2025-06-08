@@ -12,6 +12,7 @@ import {
   Trash2,
   Plus
 } from 'lucide-react';
+import { formatCurrency } from '../../utils/currency';
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -19,7 +20,7 @@ const AdminDashboard: React.FC = () => {
   const stats = [
     {
       title: 'Total Revenue',
-      value: '$45,231',
+      value: formatCurrency(45231000),
       change: '+12.5%',
       icon: DollarSign,
       color: 'bg-green-500'
@@ -52,7 +53,7 @@ const AdminDashboard: React.FC = () => {
       id: 'ORD-001',
       customer: 'John Doe',
       product: 'Premium T-Shirt',
-      amount: '$29.99',
+      amount: formatCurrency(29999),
       status: 'Completed',
       date: '2024-01-15'
     },
@@ -60,7 +61,7 @@ const AdminDashboard: React.FC = () => {
       id: 'ORD-002',
       customer: 'Jane Smith',
       product: 'Designer Sneakers',
-      amount: '$129.99',
+      amount: formatCurrency(129999),
       status: 'Processing',
       date: '2024-01-14'
     },
@@ -68,7 +69,7 @@ const AdminDashboard: React.FC = () => {
       id: 'ORD-003',
       customer: 'Mike Johnson',
       product: 'Casual Jacket',
-      amount: '$69.99',
+      amount: formatCurrency(69999),
       status: 'Shipped',
       date: '2024-01-13'
     }
@@ -79,7 +80,7 @@ const AdminDashboard: React.FC = () => {
       id: '1',
       name: 'Premium Cotton T-Shirt',
       category: 'Clothing',
-      price: '$29.99',
+      price: formatCurrency(29999),
       stock: 45,
       status: 'Active',
       image: 'https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=100'
@@ -88,7 +89,7 @@ const AdminDashboard: React.FC = () => {
       id: '2',
       name: 'Designer Sneakers',
       category: 'Shoes',
-      price: '$129.99',
+      price: formatCurrency(129999),
       stock: 23,
       status: 'Active',
       image: 'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&w=100'
@@ -97,7 +98,7 @@ const AdminDashboard: React.FC = () => {
       id: '3',
       name: 'Elegant Dress',
       category: 'Clothing',
-      price: '$89.99',
+      price: formatCurrency(89999),
       stock: 12,
       status: 'Low Stock',
       image: 'https://images.pexels.com/photos/985635/pexels-photo-985635.jpeg?auto=compress&cs=tinysrgb&w=100'

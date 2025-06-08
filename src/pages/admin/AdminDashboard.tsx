@@ -10,13 +10,63 @@ import {
   Eye,
   Edit,
   Trash2,
-  Plus
+  Plus,
+  X
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { toast } from 'react-hot-toast';
+import axios, { AxiosError } from 'axios';
+import ImageUpload from '../../components/admin/ImageUpload';
+
+// Update the Product interface to match the API response
+interface Product {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  discount: number;
+  category: string;
+  images: string[];
+  colors: string[];
+  sizes: string[];
+  stock: number;
+  status: string;
+}
+
+interface ProductFormData {
+  name: string;
+  description: string;
+  price: string;
+  discount: string;
+  category: string;
+  images: string[];
+  colors: string[];
+  sizes: string[];
+  stock: string;
+  status: string;
+}
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productForm, setProductForm] = useState<ProductFormData>({
+    name: '',
+    description: '',
+    price: '',
+    discount: '0',
+    category: '',
+    images: [],
+    colors: [],
+    sizes: [],
+    stock: '',
+    status: 'Active'
+  });
 
+  const queryClient = useQueryClient();
+
+  // Stats data
   const stats = [
     {
       title: 'Total Revenue',
@@ -75,35 +125,167 @@ const AdminDashboard: React.FC = () => {
     }
   ];
 
-  const products = [
-    {
-      id: '1',
-      name: 'Premium Cotton T-Shirt',
-      category: 'Clothing',
-      price: formatCurrency(29999),
-      stock: 45,
-      status: 'Active',
-      image: 'https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=100'
-    },
-    {
-      id: '2',
-      name: 'Designer Sneakers',
-      category: 'Shoes',
-      price: formatCurrency(129999),
-      stock: 23,
-      status: 'Active',
-      image: 'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&w=100'
-    },
-    {
-      id: '3',
-      name: 'Elegant Dress',
-      category: 'Clothing',
-      price: formatCurrency(89999),
-      stock: 12,
-      status: 'Low Stock',
-      image: 'https://images.pexels.com/photos/985635/pexels-photo-985635.jpeg?auto=compress&cs=tinysrgb&w=100'
+  // Fetch products
+  const { data: products = [], isLoading: isLoadingProducts, error: productsError } = useQuery<Product[]>('products', async () => {
+    try {
+      const response = await axios.get('/api/products');
+      // Ensure we always return an array
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      return [];
     }
-  ];
+  }, {
+    retry: 1,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Add product mutation
+  const addProductMutation = useMutation<Product, AxiosError, ProductFormData>(
+    async (formData) => {
+      console.log('Sending product data:', formData);
+      const productData = {
+        ...formData,
+        price: Number(formData.price),
+        discount: Number(formData.discount),
+        stock: Number(formData.stock),
+        status: formData.status
+      };
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/products`, productData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        withCredentials: true
+      });
+      return response.data;
+    },
+    {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries('products');
+        toast.success('Product added successfully');
+        console.log('Product added successfully!', data);
+      },
+      onError: (error: AxiosError) => {
+        toast.error(error.message || 'Error adding product');
+        console.error('Error adding product:', error.response?.data || error.message);
+      }
+    }
+  );
+
+  // Update product mutation
+  const updateProductMutation = useMutation<Product, AxiosError, { id: string; product: ProductFormData }>(
+    async ({ id, product }) => {
+      const productData = {
+        ...product,
+        price: Number(product.price),
+        discount: Number(product.discount),
+        stock: Number(product.stock),
+        status: product.status
+      };
+      const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/products/${id}`, productData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        withCredentials: true
+      });
+      return response.data;
+    },
+    {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries('products');
+        toast.success('Product updated successfully');
+        console.log('Product updated successfully!', data);
+      },
+      onError: (error: AxiosError) => {
+        toast.error(error.message || 'Error updating product');
+        console.error('Error updating product:', error.response?.data || error.message);
+      }
+    }
+  );
+
+  // Delete product mutation
+  const deleteProductMutation = useMutation<void, Error, string>(
+    async (id) => {
+      const response = await axios.delete(`/api/products/${id}`);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('products');
+        toast.success('Product deleted successfully');
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Error deleting product');
+      }
+    }
+  );
+
+  const handleProductInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> | 
+    { target: { name: string; value: string[] } }
+  ) => {
+    const { name, value } = e.target;
+    setProductForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleProductSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    console.log('handleProductSubmit called');
+    console.log('Current product form state:', productForm);
+
+    if (editingProduct) {
+      console.log('Attempting to update product with data:', productForm);
+      await updateProductMutation.mutateAsync({
+        id: editingProduct._id,
+        product: productForm
+      });
+    } else {
+      console.log('Attempting to add new product with data:', productForm);
+      await addProductMutation.mutateAsync(productForm);
+    }
+
+    setShowAddProductModal(false);
+    setEditingProduct(null);
+    setProductForm({
+      name: '',
+      description: '',
+      price: '',
+      discount: '0',
+      category: '',
+      images: [],
+      colors: [],
+      sizes: [],
+      stock: '',
+      status: 'Active'
+    });
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductForm({
+      name: product.name,
+      description: product.description,
+      price: product.price.toString(),
+      discount: product.discount.toString(),
+      category: product.category,
+      images: product.images,
+      colors: product.colors,
+      sizes: product.sizes,
+      stock: product.stock.toString(),
+      status: product.status
+    });
+    setShowAddProductModal(true);
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this product?')) {
+      await deleteProductMutation.mutateAsync(id);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -115,11 +297,102 @@ const AdminDashboard: React.FC = () => {
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       case 'Active':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'Low Stock':
+      case 'Out of Stock':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
+  };
+
+  // Add error handling for the products table
+  const renderProductsTable = () => {
+    if (isLoadingProducts) {
+      return (
+        <tr>
+          <td colSpan={6} className="px-6 py-4 text-center">
+            Loading...
+          </td>
+        </tr>
+      );
+    }
+
+    if (productsError) {
+      return (
+        <tr>
+          <td colSpan={6} className="px-6 py-4 text-center text-red-600">
+            Error loading products. Please try again later.
+          </td>
+        </tr>
+      );
+    }
+
+    if (!Array.isArray(products) || products.length === 0) {
+      return (
+        <tr>
+          <td colSpan={6} className="px-6 py-4 text-center">
+            No products found
+          </td>
+        </tr>
+      );
+    }
+
+    return products.map((product) => (
+      <tr key={product._id}>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="flex items-center">
+            <div className="h-10 w-10 flex-shrink-0">
+              <img
+                className="h-10 w-10 rounded-full object-cover"
+                src={product.images[0]?.startsWith('http') ? product.images[0] : `${import.meta.env.VITE_API_URL}${product.images[0]}`}
+                alt={product.name}
+                onError={(e) => {
+                  e.currentTarget.src = 'https://via.placeholder.com/150?text=No+Image';
+                }}
+              />
+            </div>
+            <div className="ml-4">
+              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                {product.name}
+              </div>
+            </div>
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-900 dark:text-white">
+            {product.category}
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-900 dark:text-white">
+            {formatCurrency(product.price)}
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-900 dark:text-white">
+            {product.stock}
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(product.status)}`}>
+            {product.status}
+          </span>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+          <button
+            onClick={() => handleEditProduct(product)}
+            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-4"
+          >
+            <Edit className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => handleDeleteProduct(product._id)}
+            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        </td>
+      </tr>
+    ));
   };
 
   return (
@@ -270,92 +543,237 @@ const AdminDashboard: React.FC = () => {
 
         {/* Products Tab */}
         {activeTab === 'products' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Products Management
-              </h2>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
-                <Plus className="h-4 w-4" />
-                <span>Add Product</span>
+          <div className="space-y-6">
+            {/* Add Product Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowAddProductModal(true)}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Add Product
               </button>
             </div>
+
+            {/* Products Table */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Product
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Price
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Stock
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {products.map((product) => (
-                    <tr key={product.id} className="border-b border-gray-100 dark:border-gray-700">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-3">
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-10 h-10 object-cover rounded-lg"
-                          />
-                          <span className="text-gray-900 dark:text-white">
-                            {product.name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
-                        {product.category}
-                      </td>
-                      <td className="py-3 px-4 text-gray-900 dark:text-white font-medium">
-                        {product.price}
-                      </td>
-                      <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
-                        {product.stock}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(product.status)}`}>
-                          {product.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <button className="text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 p-1 rounded">
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button className="text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900 p-1 rounded">
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button className="text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900 p-1 rounded">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {renderProductsTable()}
                 </tbody>
               </table>
+              </div>
             </div>
-          </motion.div>
+
+            {/* Add/Edit Product Modal */}
+            {showAddProductModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl relative flex flex-col max-h-[90vh]">
+                  <div className="flex justify-between items-center mb-4 flex-shrink-0">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {editingProduct ? 'Edit Product' : 'Add New Product'}
+                    </h2>
+                    <button
+                      onClick={() => setShowAddProductModal(false)}
+                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  <div className="flex-grow overflow-y-auto pr-2">
+                    <form onSubmit={handleProductSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Name
+                        </label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={productForm.name}
+                          onChange={handleProductInputChange}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Description
+                        </label>
+                        <textarea
+                          name="description"
+                          value={productForm.description}
+                          onChange={handleProductInputChange}
+                          rows={3}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Price
+                          </label>
+                          <input
+                            type="number"
+                            name="price"
+                            value={productForm.price}
+                            onChange={handleProductInputChange}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Discount (%)
+                          </label>
+                          <input
+                            type="number"
+                            name="discount"
+                            value={productForm.discount}
+                            onChange={handleProductInputChange}
+                            min="0"
+                            max="100"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Category
+                        </label>
+                        <select
+                          name="category"
+                          value={productForm.category}
+                          onChange={handleProductInputChange}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                          required
+                        >
+                          <option value="">Select a category</option>
+                          <option value="T-Shirts">T-Shirts</option>
+                          <option value="Shirts">Shirts</option>
+                          <option value="Pants">Pants</option>
+                          <option value="Dresses">Dresses</option>
+                          <option value="Shoes">Shoes</option>
+                          <option value="Accessories">Accessories</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Stock
+                        </label>
+                        <input
+                          type="number"
+                          name="stock"
+                          value={productForm.stock}
+                          onChange={handleProductInputChange}
+                          min="0"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Colors (comma-separated)
+                        </label>
+                        <input
+                          type="text"
+                          name="colors"
+                          value={productForm.colors.join(', ')}
+                          onChange={(e) => handleProductInputChange({
+                            target: {
+                              name: 'colors',
+                              value: e.target.value.split(',').map(color => color.trim()).filter(Boolean)
+                            }
+                          })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Sizes
+                        </label>
+                        <div className="mt-2 space-x-4">
+                          {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
+                            <label key={size} className="inline-flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={productForm.sizes.includes(size)}
+                                onChange={(e) => {
+                                  const newSizes = e.target.checked
+                                    ? [...productForm.sizes, size]
+                                    : productForm.sizes.filter(s => s !== size);
+                                  handleProductInputChange({
+                                    target: {
+                                      name: 'sizes',
+                                      value: newSizes
+                                    }
+                                  });
+                                }}
+                                className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600"
+                              />
+                              <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{size}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Product Images
+                        </label>
+                        <div className="mt-2">
+                          <ImageUpload
+                            onImagesUploaded={(images) => setProductForm(prev => ({ ...prev, images }))}
+                            maxFiles={5}
+                            existingImages={productForm.images}
+                          />
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                  <div className="flex justify-end space-x-4 pt-4 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddProductModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                      disabled={addProductMutation.isLoading || updateProductMutation.isLoading}
+                    >
+                      {addProductMutation.isLoading || updateProductMutation.isLoading ? 'Processing...' : (editingProduct ? 'Update Product' : 'Add Product')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Other tabs content can be added here */}

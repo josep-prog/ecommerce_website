@@ -1,111 +1,96 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { X, Star } from 'lucide-react';
-import { formatCurrencyWithoutSymbol } from '../../utils/currency';
+import { X } from 'lucide-react';
 
 interface FilterState {
   category: string;
   priceRange: number[];
   sizes: string[];
   colors: string[];
-  rating: number;
   inStock: boolean;
 }
 
-interface FilterProps {
+interface ProductFiltersProps {
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
 }
 
-const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
+const ProductFilters: React.FC<ProductFiltersProps> = ({ filters, setFilters }) => {
   const categories = [
-    { value: '', label: 'All Categories' },
-    { value: 'men', label: 'Men\'s Fashion' },
-    { value: 'women', label: 'Women\'s Fashion' },
-    { value: 'shoes', label: 'Shoes' },
+    'T-Shirts',
+    'Shirts',
+    'Pants',
+    'Dresses',
+    'Shoes',
+    'Accessories'
   ];
 
-  const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '7', '8', '9', '10', '11', '12'];
-  const colors = ['white', 'black', 'navy', 'blue', 'red', 'green', 'pink', 'gray'];
+  const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
-  const colorMap: { [key: string]: string } = {
-    white: 'bg-white border-gray-300',
-    black: 'bg-black',
-    navy: 'bg-blue-900',
-    blue: 'bg-blue-500',
-    red: 'bg-red-500',
-    green: 'bg-green-500',
-    pink: 'bg-pink-500',
-    gray: 'bg-gray-500',
+  const handlePriceChange = (index: number, value: string) => {
+    const newPriceRange = [...filters.priceRange];
+    newPriceRange[index] = Number(value);
+    setFilters(prev => ({ ...prev, priceRange: newPriceRange }));
   };
 
   const handleSizeToggle = (size: string) => {
-    setFilters((prev: FilterState) => ({
+    setFilters(prev => ({
       ...prev,
       sizes: prev.sizes.includes(size)
-        ? prev.sizes.filter((s: string) => s !== size)
-        : [...prev.sizes, size],
+        ? prev.sizes.filter(s => s !== size)
+        : [...prev.sizes, size]
     }));
   };
 
   const handleColorToggle = (color: string) => {
-    setFilters((prev: FilterState) => ({
+    setFilters(prev => ({
       ...prev,
       colors: prev.colors.includes(color)
-        ? prev.colors.filter((c: string) => c !== color)
-        : [...prev.colors, color],
+        ? prev.colors.filter(c => c !== color)
+        : [...prev.colors, color]
     }));
   };
 
-  const clearAllFilters = () => {
+  const clearFilters = () => {
     setFilters({
       category: '',
       priceRange: [0, 200],
       sizes: [],
       colors: [],
-      rating: 0,
-      inStock: false,
+      inStock: false
     });
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sticky top-24"
-    >
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
           Filters
-        </h3>
+        </h2>
         <button
-          onClick={clearAllFilters}
-          className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          onClick={clearFilters}
+          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
         >
-          Clear All
+          Clear all
         </button>
       </div>
 
       {/* Category Filter */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
           Category
-        </h4>
+        </h3>
         <div className="space-y-2">
           {categories.map((category) => (
-            <label key={category.value} className="flex items-center">
+            <label key={category} className="flex items-center">
               <input
                 type="radio"
                 name="category"
-                value={category.value}
-                checked={filters.category === category.value}
-                onChange={(e) =>
-                  setFilters((prev: FilterState) => ({ ...prev, category: e.target.value }))
-                }
+                checked={filters.category === category}
+                onChange={() => setFilters(prev => ({ ...prev, category }))}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
               />
               <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                {category.label}
+                {category}
               </span>
             </label>
           ))}
@@ -114,44 +99,42 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
 
       {/* Price Range Filter */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
           Price Range
-        </h4>
-        <div className="space-y-2">
+        </h3>
+        <div className="flex items-center space-x-2">
           <input
-            type="range"
+            type="number"
+            value={filters.priceRange[0]}
+            onChange={(e) => handlePriceChange(0, e.target.value)}
+            className="w-24 rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             min="0"
-            max="200"
-            value={filters.priceRange[1]}
-            onChange={(e) =>
-              setFilters((prev: FilterState) => ({
-                ...prev,
-                priceRange: [0, parseInt(e.target.value)],
-              }))
-            }
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
           />
-          <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-            <span>RWF 0</span>
-            <span>RWF {formatCurrencyWithoutSymbol(filters.priceRange[1])}</span>
-          </div>
+          <span className="text-gray-500">to</span>
+          <input
+            type="number"
+            value={filters.priceRange[1]}
+            onChange={(e) => handlePriceChange(1, e.target.value)}
+            className="w-24 rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            min="0"
+          />
         </div>
       </div>
 
       {/* Size Filter */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
           Size
-        </h4>
-        <div className="grid grid-cols-3 gap-2">
+        </h3>
+        <div className="flex flex-wrap gap-2">
           {sizes.map((size) => (
             <button
               key={size}
               onClick={() => handleSizeToggle(size)}
-              className={`px-3 py-2 text-sm border rounded-lg transition-colors ${
+              className={`px-3 py-1 rounded-full text-sm ${
                 filters.sizes.includes(size)
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
               {size}
@@ -162,59 +145,22 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
 
       {/* Color Filter */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
           Color
-        </h4>
-        <div className="grid grid-cols-4 gap-2">
-          {colors.map((color) => (
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {['White', 'Black', 'Blue', 'Red', 'Green', 'Yellow'].map((color) => (
             <button
               key={color}
               onClick={() => handleColorToggle(color)}
-              className={`w-10 h-10 rounded-full border-2 ${
-                colorMap[color] || 'bg-gray-300'
-              } ${
+              className={`px-3 py-1 rounded-full text-sm ${
                 filters.colors.includes(color)
-                  ? 'border-blue-500 ring-2 ring-blue-200'
-                  : 'border-gray-300 dark:border-gray-600'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
-              title={color}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Rating Filter */}
-      <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-          Minimum Rating
-        </h4>
-        <div className="space-y-2">
-          {[4, 3, 2, 1].map((rating) => (
-            <label key={rating} className="flex items-center">
-              <input
-                type="radio"
-                name="rating"
-                value={rating}
-                checked={filters.rating === rating}
-                onChange={(e) =>
-                  setFilters((prev: FilterState) => ({ ...prev, rating: parseInt(e.target.value) }))
-                }
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-              />
-              <div className="ml-2 flex items-center">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`h-4 w-4 ${
-                      i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                    }`}
-                  />
-                ))}
-                <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">
-                  & up
-                </span>
-              </div>
-            </label>
+            >
+              {color}
+            </button>
           ))}
         </div>
       </div>
@@ -225,17 +171,15 @@ const ProductFilters: React.FC<FilterProps> = ({ filters, setFilters }) => {
           <input
             type="checkbox"
             checked={filters.inStock}
-            onChange={(e) =>
-              setFilters((prev: FilterState) => ({ ...prev, inStock: e.target.checked }))
-            }
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
+            onChange={(e) => setFilters(prev => ({ ...prev, inStock: e.target.checked }))}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
           />
           <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
             In Stock Only
           </span>
         </label>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

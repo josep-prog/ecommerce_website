@@ -25,6 +25,7 @@ const ChatPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(true);
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+  const [clients, setClients] = useState<any[]>([]);
 
   // Redirect if not authenticated
   if (!loading && !user) {
@@ -84,6 +85,11 @@ const ChatPage: React.FC = () => {
 
         setChatClient(client);
         await loadChannels(client);
+
+        // Fetch all clients if the user is an admin
+        if (user.role === 'admin') {
+          await fetchAllClients(client);
+        }
       } catch (err) {
         console.error('Error initializing chat:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize chat');
@@ -100,7 +106,7 @@ const ChatPage: React.FC = () => {
             type: 'messaging',
             members: { $in: [user.id] }  // Include channels where admin is a member
           };
-          const sort = { last_message_at: -1 };
+          const sort: any = { last_message_at: -1 };
           const channels = await client.queryChannels(filter, sort, {
             state: true,
             presence: true,
@@ -108,28 +114,25 @@ const ChatPage: React.FC = () => {
           });
           setChannels(channels);
           
-          if (channels.length > 0 && !selectedChannel) {
-            setSelectedChannel(channels[0].id);
+          if (channels.length > 0) {
+            setSelectedChannel(channels[0].id || null);
             setChannel(channels[0]);
+          } else {
+            setSelectedChannel(null);
+            setChannel(null);
           }
         } else {
-          // For regular users: Get or create their support channel
-          const channel = client.channel('messaging', `support-${user.id}`, {
-            name: 'Customer Support',
-            members: [user.id],
-            created_by_id: user.id,
-            configs: {
-              typing_events: true,
-              read_events: true,
-              connect_events: true,
-              reactions: true,
-              replies: true,
-              search: true,
-              typing_indicators: {
-                enabled: true
-              }
+          // For regular users: Get or create their support channel via backend
+          const channelResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/chat/support-channel`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`
             }
           });
+          const { channel: channelCid } = channelResponse.data;
+
+          // Parse cid to get channel type and ID
+          const [type, id] = channelCid.split(':');
+          const channel = client.channel(type, id);
 
           await channel.watch();
           setChannel(channel);
@@ -138,6 +141,20 @@ const ChatPage: React.FC = () => {
       } catch (err) {
         console.error('Error loading channels:', err);
         throw err;
+      }
+    };
+
+    const fetchAllClients = async (client: StreamChat) => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/clients`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        setClients(response.data.clients);
+      } catch (err) {
+        console.error('Error fetching all clients:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch clients');
       }
     };
 
@@ -153,8 +170,32 @@ const ChatPage: React.FC = () => {
   }, [user, selectedChannel]);
 
   const handleChannelSelect = (channel: StreamChannel) => {
-    setSelectedChannel(channel.id);
+    setSelectedChannel(channel.id || null);
     setChannel(channel);
+  };
+
+  const handleClientSelect = async (clientUser: any) => {
+    if (!chatClient || !user) return;
+
+    const channelId = `direct-${user.id}-${clientUser.id}`;
+    const channelName = `Chat with ${clientUser.name}`;
+
+    try {
+      let dmChannel = chatClient.channel(
+        'messaging',
+        channelId,
+        {
+          name: channelName,
+          members: [user.id, clientUser.id],
+        }
+      );
+      await dmChannel.watch();
+      setChannel(dmChannel);
+      setSelectedChannel(dmChannel.id || null);
+    } catch (error) {
+      console.error('Error creating or watching direct message channel:', error);
+      setError('Failed to open direct message chat.');
+    }
   };
 
   if (loading || isConnecting) {
@@ -194,25 +235,45 @@ const ChatPage: React.FC = () => {
       <Chat client={chatClient} theme="messaging light">
         {user?.role === 'admin' ? (
           <div className="flex h-full">
-            <div className="w-1/4 border-r border-gray-200">
+            <div className="w-1/4 border-r border-gray-200 p-4">
+              <h2 className="text-lg font-semibold mb-4">Support Channels</h2>
               <ChannelList
-                filters={{ type: 'messaging' }}
-                sort={{ last_message_at: -1 }}
+                filters={{ type: 'messaging', members: { $in: [user.id] } }}
+                sort={{ last_message_at: -1 } as any}
                 options={{ state: true, presence: true, limit: 10 }}
                 Preview={({ channel }) => (
                   <div
-                    className={`p-4 cursor-pointer hover:bg-gray-100 ${
-                      selectedChannel === channel.id ? 'bg-gray-100' : ''
+                    className={`p-2 cursor-pointer hover:bg-gray-100 rounded ${
+                      selectedChannel === channel.id ? 'bg-blue-100' : ''
                     }`}
                     onClick={() => handleChannelSelect(channel)}
                   >
-                    <h3 className="font-semibold">{channel.data?.name || 'Support Chat'}</h3>
-                    <p className="text-sm text-gray-500">
+                    <h3 className="font-semibold text-sm">{channel.data?.name || 'Support Chat'}</h3>
+                    <p className="text-xs text-gray-500 truncate">
                       {channel.state.messages[channel.state.messages.length - 1]?.text || 'No messages yet'}
                     </p>
                   </div>
                 )}
               />
+              <h2 className="text-lg font-semibold mt-6 mb-4">All Clients</h2>
+              <div className="overflow-y-auto max-h-[calc(100vh-20rem)]">
+                {clients.length > 0 ? (
+                  clients.map((clientUser) => (
+                    <div
+                      key={clientUser.id}
+                      className={`p-2 cursor-pointer hover:bg-gray-100 rounded mb-2 ${
+                        selectedChannel === `direct-${user.id}-${clientUser.id}` ? 'bg-blue-100' : ''
+                      }`}
+                      onClick={() => handleClientSelect(clientUser)}
+                    >
+                      <h3 className="font-semibold text-sm">{clientUser.name}</h3>
+                      <p className="text-xs text-gray-500">Role: {clientUser.role}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">No other clients found.</p>
+                )}
+              </div>
             </div>
             <div className="flex-1">
               {channel ? (

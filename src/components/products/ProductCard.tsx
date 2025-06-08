@@ -1,24 +1,19 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Star, Heart, ShoppingCart, Eye } from 'lucide-react';
-import { useCart } from '../../contexts/CartContext';
-import toast from 'react-hot-toast';
+import React from 'react';
+import { Heart } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 
 interface Product {
-  id: string;
+  _id: string;
   name: string;
+  description: string;
   price: number;
-  originalPrice?: number;
-  image: string;
+  discount: number;
   category: string;
-  rating: number;
-  reviews: number;
+  images: string[];
   colors: string[];
   sizes: string[];
-  isNew?: boolean;
-  inStock: boolean;
+  stock: number;
+  status: string;
 }
 
 interface ProductCardProps {
@@ -27,286 +22,87 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode }) => {
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [selectedColor, setSelectedColor] = useState(product.colors[0]);
-  const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
-  const { addItem } = useCart();
-
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    addItem(product, 1, selectedSize, selectedColor);
-  };
-
-  const handleWishlistToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsWishlisted(!isWishlisted);
-    toast.success(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist');
-  };
-
-  const colorMap: { [key: string]: string } = {
-    white: 'bg-white border-gray-300',
-    black: 'bg-black',
-    navy: 'bg-blue-900',
-    blue: 'bg-blue-500',
-    red: 'bg-red-500',
-    green: 'bg-green-500',
-    pink: 'bg-pink-500',
-  };
-
-  if (viewMode === 'list') {
-    return (
-      <motion.div
-        whileHover={{ y: -2 }}
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex"
-      >
-        <div className="flex w-full">
-          <Link to={`/products/${product.id}`} className="relative w-48 h-48 flex-shrink-0">
-            <img
-              src={product.image}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-            {product.isNew && (
-              <span className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                New
-              </span>
-            )}
-            {product.originalPrice && (
-              <span className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
-                Sale
-              </span>
-            )}
-          </Link>
-
-          <div className="flex-1 p-6 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400 capitalize">
-                  {product.category}
-                </span>
-                <button
-                  onClick={handleWishlistToggle}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                >
-                  <Heart
-                    className={`h-5 w-5 ${
-                      isWishlisted ? 'text-red-500 fill-current' : 'text-gray-400'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <Link to={`/products/${product.id}`} className="block">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 hover:text-blue-600 dark:hover:text-blue-400">
-                  {product.name}
-                </h3>
-              </Link>
-
-              <div className="flex items-center space-x-2 mb-3">
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${
-                        i < Math.floor(product.rating)
-                          ? 'text-yellow-400 fill-current'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {product.rating} ({product.reviews} reviews)
-                </span>
-              </div>
-
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Colors:</span>
-                  <div className="flex space-x-1">
-                    {product.colors.map((color) => (
-                      <button
-                        key={color}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setSelectedColor(color);
-                        }}
-                        className={`w-6 h-6 rounded-full border-2 ${
-                          colorMap[color] || 'bg-gray-300'
-                        } ${
-                          selectedColor === color
-                            ? 'border-blue-500'
-                            : 'border-gray-300'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Size:</span>
-                  <select
-                    value={selectedSize}
-                    onChange={(e) => setSelectedSize(e.target.value)}
-                    onClick={(e) => e.preventDefault()}
-                    className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                    {product.sizes.map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatCurrency(product.price)}
-                </span>
-                {product.originalPrice && (
-                  <span className="text-lg text-gray-500 line-through">
-                    {formatCurrency(product.originalPrice)}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Link
-                  to={`/products/${product.id}`}
-                  className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center space-x-2"
-                >
-                  <Eye className="h-4 w-4" />
-                  <span>View</span>
-                </Link>
-                <button
-                  onClick={handleAddToCart}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  <span>Add to Cart</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    );
-  }
+  const isOutOfStock = product.stock === 0;
+  const discountPrice = product.discount > 0
+    ? product.price * (1 - product.discount / 100)
+    : product.price;
 
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden group"
-    >
-      <Link to={`/products/${product.id}`}>
-        <div className="relative overflow-hidden">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
-          />
-          
-          {/* Badges */}
-          <div className="absolute top-2 left-2 flex flex-col space-y-1">
-            {product.isNew && (
-              <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">
-                New
-              </span>
-            )}
-            {product.originalPrice && (
-              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">
-                Sale
-              </span>
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden ${
+      viewMode === 'list' ? 'flex' : ''
+    }`}>
+      {/* Product Image */}
+      <div className={`relative ${viewMode === 'list' ? 'w-1/3' : ''}`}>
+        <img
+          src={product.images[0]}
+          alt={product.name}
+          className={`w-full object-cover ${
+            viewMode === 'list' ? 'h-full' : 'h-48'
+          }`}
+        />
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <span className="text-white font-bold text-lg">Out of Stock</span>
+          </div>
+        )}
+        <button className="absolute top-2 right-2 p-2 rounded-full bg-white dark:bg-gray-700 shadow-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+          <Heart className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+        </button>
+      </div>
+
+      {/* Product Info */}
+      <div className={`p-4 ${viewMode === 'list' ? 'w-2/3' : ''}`}>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          {product.name}
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+          {product.description}
+        </p>
+        
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <span className="text-lg font-bold text-gray-900 dark:text-white">
+              {formatCurrency(discountPrice)}
+            </span>
+            {product.discount > 0 && (
+              <>
+                <span className="ml-2 text-sm text-gray-500 line-through">
+                  {formatCurrency(product.price)}
+                </span>
+                <span className="ml-2 text-sm text-green-600">
+                  {product.discount}% OFF
+                </span>
+              </>
             )}
           </div>
-
-          {/* Wishlist Button */}
-          <button
-            onClick={handleWishlistToggle}
-            className="absolute top-2 right-2 bg-white/90 hover:bg-white p-2 rounded-full transition-colors shadow-md"
-          >
-            <Heart
-              className={`h-4 w-4 ${
-                isWishlisted ? 'text-red-500 fill-current' : 'text-gray-600'
-              }`}
-            />
-          </button>
-
-          {/* Quick Actions */}
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
-            <Link
-              to={`/products/${product.id}`}
-              className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <Eye className="h-5 w-5" />
-            </Link>
-            <button
-              onClick={handleAddToCart}
-              className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
-            >
-              <ShoppingCart className="h-5 w-5" />
-            </button>
-          </div>
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            {product.stock} in stock
+          </span>
         </div>
 
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400 capitalize">
-              {product.category}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {product.colors.map((color) => (
+            <span
+              key={color}
+              className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+            >
+              {color}
             </span>
-            <div className="flex items-center space-x-1">
-              <Star className="h-4 w-4 text-yellow-400 fill-current" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {product.rating}
-              </span>
-            </div>
-          </div>
-
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 truncate">
-            {product.name}
-          </h3>
-
-          {/* Colors */}
-          <div className="flex items-center space-x-2 mb-3">
-            <div className="flex space-x-1">
-              {product.colors.slice(0, 3).map((color) => (
-                <div
-                  key={color}
-                  className={`w-4 h-4 rounded-full border ${
-                    colorMap[color] || 'bg-gray-300'
-                  }`}
-                />
-              ))}
-              {product.colors.length > 3 && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  +{product.colors.length - 3}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                {formatCurrency(product.price)}
-              </span>
-              {product.originalPrice && (
-                <span className="text-sm text-gray-500 line-through">
-                  {formatCurrency(product.originalPrice)}
-                </span>
-              )}
-            </div>
-            
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {product.reviews} reviews
-            </span>
-          </div>
+          ))}
         </div>
-      </Link>
-    </motion.div>
+
+        <div className="flex flex-wrap gap-2">
+          {product.sizes.map((size) => (
+            <span
+              key={size}
+              className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+            >
+              {size}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 };
 
